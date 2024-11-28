@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Project Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #181818;
+            color: #e1e4e8;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #58a6ff;
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        .search-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-bar input {
+            padding: 12px;
+            font-size: 16px;
+            width: 300px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #333;
+            color: #e1e4e8;
+        }
+
+        .search-bar button {
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: #58a6ff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .search-bar button:hover {
+            background-color: #3399cc;
+        }
+
+        .repo-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .repo-section {
+            width: 45%;
+            background-color: #222;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .repo-card {
+            background-color: #333;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .repo-title a {
+            color: #58a6ff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .repo-info {
+            color: #ccc;
+            margin: 8px 0;
+        }
+
+        .repo-stats span {
+            color: #58a6ff;
+            font-size: 0.9rem;
+            margin-right: 10px;
+        }
+
+        .clone-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            background-color: #1d7d9c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: block;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .clone-btn:hover {
+            background-color: #34d1e0;
+        }
+
+        .loading {
+            text-align: center;
+            color: #58a6ff;
+            font-size: 1.2rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>GitHub Project Finder</h1>
+    <div class="search-container">
+        <div class="search-bar">
+            <input type="text" id="query" placeholder="Search for GitHub repositories..." />
+            <button onclick="searchRepos()">Search</button>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">Loading...</div>
+
+    <div class="repo-container">
+        <div class="repo-section" id="popular">
+            <h2>Popular Projects</h2>
+        </div>
+        <div class="repo-section" id="niche">
+            <h2>Niche Projects</h2>
+        </div>
+    </div>
+
+    <script>
+        async function searchRepos() {
+            const query = document.getElementById('query').value;
+            if (!query) return;
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('popular').innerHTML = '<h2>Popular Projects</h2>';
+            document.getElementById('niche').innerHTML = '<h2>Niche Projects</h2>';
+
+            try {
+                const response = await fetch(`https://api.github.com/search/repositories?q=${query}&per_page=100`);
+                const data = await response.json();
+
+                let hasPopular = false;
+                let hasNiche = false;
+
+                data.items.forEach(item => {
+                    const repoCard = document.createElement('div');
+                    repoCard.classList.add('repo-card');
+
+                    const description = item.description ? item.description.slice(0, 80) + '...' : 'No description available';
+
+                    repoCard.innerHTML = `
+                        <div class="repo-title">
+                            <a href="${item.html_url}" target="_blank">${item.name}</a>
+                        </div>
+                        <div class="repo-info">${description}</div>
+                        <div class="repo-stats">
+                            <span>⭐ ${item.stargazers_count}</span>
+                            <span>🍴 ${item.forks_count}</span>
+                        </div>
+                        <button class="clone-btn" onclick="copyCloneURL('${item.clone_url}')">Clone to VS Code</button>
+                    `;
+
+                    if (item.stargazers_count >= 1000) {
+                        document.getElementById('popular').appendChild(repoCard);
+                        hasPopular = true;
+                    }
+
+                    if (item.stargazers_count < 100) {
+                        document.getElementById('niche').appendChild(repoCard);
+                        hasNiche = true;
+                    }
+                });
+
+                if (!hasPopular) {
+                    document.getElementById('popular').innerHTML += '<p>No popular projects found.</p>';
+                }
+                if (!hasNiche) {
+                    document.getElementById('niche').innerHTML += '<p>No niche projects found.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('popular').innerHTML += '<p>Error loading data for Popular Projects.</p>';
+                document.getElementById('niche').innerHTML += '<p>Error loading data for Niche Projects.</p>';
+            }
+
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function copyCloneURL(cloneURL) {
+            // Copy the clone URL to clipboard
+            const el = document.createElement('textarea');
+            el.value = cloneURL;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+
+            alert('Clone URL copied! Use "git clone" or open it in VS Code.');
+        }
+    </script>
+</body>
+</html>
